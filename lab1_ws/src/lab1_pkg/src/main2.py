@@ -21,25 +21,31 @@ from utils import *
 from baxter_pykdl import baxter_kinematics
 import signal
 # from controllers import PDJointPositionController, PDJointVelocityController, PDJointTorqueController
-from controllers import PDWorkspaceVelocityController, PDJointVelocityController
-from paths import LinearPath, CircularPath #, MultiplePaths
+from controllers2 import PDWorkspaceVelocityController, PDJointVelocityController, PDJointTorqueController
+from path2 import LinearPath, CircularPath
 
 def lookup_tag(tag_number):
     listener = tf.TransformListener()
     from_frame = 'base'
     to_frame = 'ar_marker_{}'.format(tag_number)
-    print(to_frame)
-
-
-    # print(listener.frameExists(from_frame))
-    # print(listener.frameExists(to_frame))
+    # print("Base frame status: ", listener.frameExists(from_frame))
+    # print("To frame status: ", listener.frameExists(to_frame))
     # if not listener.frameExists(from_frame) or not listener.frameExists(to_frame):
     #     print 'Frames not found'
     #     print 'Did you place AR marker {} within view of the baxter left hand camera?'.format(tag_number)
     #     exit(0)
     # t = listener.getLatestCommonTime(from_frame, to_frame)
-    t = rospy.Time.now()
-    tag_pos, _ = listener.lookupTransform(from_frame, to_frame, t)
+    # print("The common time is: ", t)
+    tag_pos = None
+    
+    while not tag_pos:
+        try:
+            t = listener.getLatestCommonTime(from_frame, to_frame)
+            tag_pos, _ = listener.lookupTransform(from_frame, to_frame, t)
+            break
+        except:
+            continue
+
     return tag_pos
 
 if __name__ == "__main__":
@@ -66,38 +72,49 @@ if __name__ == "__main__":
     #     controller = PDJointPositionController(limb, kin, Kp, Kv)
     # if args.controller == 'velocity':
     #     # YOUR CODE HERE
-    Kp = -.2
-    Kv = -.2
-    controller = PDWorkspaceVelocityController(limb, kin, Kp, Kv)
-    # Kp = .02
-    # Kv = .05
+
+    # #### LINEAR PATH WORKSPACE CONTROL
+    # Kp = -2
+    # Kv = -.7
+    # controller = PDWorkspaceVelocityController(limb, kin, Kp, Kv)
+
+    # #### CIRCULAR PATH WORKSPACE CONTROL
+    # Kp = -.6
+    # Kv = -0.5
+    # controller = PDWorkspaceVelocityController(limb, kin, Kp, Kv)
+
+    # ### lINEAR PATH JOINTSPACE CONTROL
+    # Kp = np.array([-.8, -.5, -1, -.5, -1, -.5, -1])
+    # Kv = np.array([-1.2, -.5, -.5, -.5, -.5, -.5, -.8])
     # controller = PDJointVelocityController(limb, kin, Kp, Kv)
+
+    # ### CIRCULAR PATH JOINTSPACE CONTROL
+    # Kp = np.array([-.8, -.5, -1, -.5, -1, -.5, -1])
+    # Kv = np.array([-.8, -.5, -.5, -.5, -.5, -.5, -.8])
+    # controller = PDJointVelocityController(limb, kin, Kp, Kv)
+
+    Kp = np.array([-.5, -.5, -.5, -.5, -.5, -.5, -.5])
+    Kv = np.array([-.5, -.5, -.5, -.5, -.5, -.5, -.5])
+
     # if args.controller == 'torque':
     #     # YOUR CODE HERE
     #     Kp = 
     #     Kv = 
     #     controller = PDJointTorqueController(limb, kin, Kp, Kv)
     
-    raw_input('Press <Enter> to start')
+    raw_input('\nPlace the AR tag and press <Enter> to start')
     # YOUR CODE HERE
     # IMPORTANT: you may find useful functions in utils.py
 
-    # tag_pos = None
-    # while not tag_pos:
-    #     try: 
-    #         tag_pos = lookup_tag(4)
-    #         break
-    #     except:
-    #         print('not found')
-    #         continue
+    tag_pos = np.array(lookup_tag(4));
 
-    tag_pos = np.array([.6, .7, -.35])
+    # tag_pos = np.array([.6, .7, -.35])
+
+    print("Target position: ", tag_pos)
+    raw_input('AR tag found! Press <Enter> to continue')
 
 
-    print("here")
-    # print(dict_angles)
-
-
-    # path1 = LinearPath(tag_pos, limb.endpoint_pose()["position"])
-    path1 = CircularPath(tag_pos, limb.endpoint_pose()["position"])
+    path1 = LinearPath(tag_pos, limb.endpoint_pose()["position"])
+    # path1 = CircularPath(tag_pos, limb.endpoint_pose()["position"])
+    controller = PDJointTorqueController(limb, kin, Kp, Kv)
     controller.execute_path(path1, path1.is_finished, log = True)
