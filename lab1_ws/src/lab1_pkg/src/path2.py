@@ -2,10 +2,7 @@ import numpy as np
 import math
 from utils import *
 import time
-<<<<<<< HEAD
 import rospy
-=======
->>>>>>> bb09561cf45fbaa5f5a6efa2508fa3e8f13fd13a
 
 """
 Starter script for lab1. 
@@ -104,7 +101,6 @@ class MultiplePaths(MotionPath):
 
 	def target_acceleration(self, time):
 		return self.current_path.target_acceleration(time)
-<<<<<<< HEAD
 
 	def is_finished(self, position, t=None):
 		print(self.count)
@@ -155,55 +151,3 @@ class VisualServoPaths(MotionPath):
 			self.current_start = position
 			self.current_path = LinearPath(self.tag_pos, self.current_start, t)
 		return False
-=======
-
-	def is_finished(self, position, t=None):
-		print(self.count)
-		if self.count == 5:
-			return True
-		else:
-			if self.current_path.is_finished(position):
-				self.count += 1
-				self.current_start = position
-				self.current_path = LinearPath(self.end_points[self.count % 4], self.current_start, t)
-				time.sleep(1)
-			return False
-
-
-class VisualServoPaths(MotionPath):
-	def __init__(self, start_pos, end_point, limb):
-		# self.count = 0
-		self.end_point = end_point
-		self.current_start = start_pos
-		self.current_path = LinearPath(self.end_point, self.current_start)
-		self.limb = limb
-
-	def target_position(self, time):
-		return self.current_path.target_position(time)
-
-	def target_velocity(self, time):
-		return self.current_path.target_velocity(time)
-
-	def target_acceleration(self, time):
-		return self.current_path.target_acceleration(time)
-
-	def is_finished(self, position, t=None, servo = False, lookup_tag = None):
-		# print(self.count)
-		# if self.count == 5:
-		# 	return True
-		# else:
-		if self.current_path.is_finished(position):
-			print("finished")
-			return True
-			# self.count += 1
-		else:
-			if servo:
-				tag_pos = np.array(lookup_tag())
-				if tag_pos is None:
-					print("tag not found")
-				elif  np.linalg.norm(self.current_path.final_pos - tag_pos) > 0.1:
-					self.current_start = self.limb.endpoint_pose()["position"]
-					self.current_path = LinearPath(tag_pos, self.current_start, t)
-			# time.sleep(1)
-			return False
->>>>>>> bb09561cf45fbaa5f5a6efa2508fa3e8f13fd13a

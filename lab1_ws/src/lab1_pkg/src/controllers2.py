@@ -274,15 +274,8 @@ class PDJointTorqueController(Controller):
 		self.target_theta_dots = None
 		self.target_thetas = None
 
-<<<<<<< HEAD
 
 		# print(self.init_torque)
-=======
-		dict_of_efforts = self.limb.joint_efforts()
-		print(dict_of_efforts)
-		self.init_torque = [dict_of_efforts[k] for k in Controller.joint_order]
-		print(self.init_torque)
->>>>>>> bb09561cf45fbaa5f5a6efa2508fa3e8f13fd13a
 		# self.new_torque = None
 		self.prev_J_inv = self.kin.jacobian_pseudo_inverse()
 		self.prev_time = rospy.Time.now().to_sec()
@@ -318,23 +311,12 @@ class PDJointTorqueController(Controller):
 
 		self.prev_J_inv = self.kin.jacobian_pseudo_inverse()
 
-<<<<<<< HEAD
 
 		# M_term = np.dot(self.kin.inertia(), np.reshape(target_theta_ddot, (7,1)))
 		M_term = np.dot(self.kin.inertia(), target_theta_ddot)
 
 
 		new_torque = M_term + np.multiply(self.Kp, joint_error) + np.multiply(self.Kv, joint_error_dot)
-=======
-
-		# M_term = np.dot(self.kin.inertia(), np.reshape(target_theta_ddot, (7,1)))
-		# M_term = np.dot(self.kin.inertia(), target_theta_ddot)
-
-		M_term = 0
-
-
-		new_torque = M_term + np.multiply(self.Kp, joint_error) + np.multiply(self.Kv, joint_error_dot) + self.init_torque
->>>>>>> bb09561cf45fbaa5f5a6efa2508fa3e8f13fd13a
 		# print(new_torque)
 		dict_ = {}
 		for i in range(len(Controller.joint_order)):
