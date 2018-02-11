@@ -1,6 +1,8 @@
 import numpy as np
 import math
 from utils import *
+import time
+import rospy
 
 """
 Starter script for lab1. 
@@ -24,14 +26,15 @@ class MotionPath:
 		raise NotImplementedError
 
 class LinearPath(MotionPath):
-	def __init__(self, ar_tag, start_pos):
+	def __init__(self, ar_tag, start_pos, start_time = 0):
 		self.start_pos = start_pos
 		self.final_pos = ar_tag
-		self.targ_velocity = .7*(self.final_pos - self.start_pos)
+		self.targ_velocity = .2*(self.final_pos - self.start_pos)
 		self.targ_velocity[2] = 0
+		self.start_time = start_time
 
 	def target_position(self, time):
-		targ_pos = self.start_pos  + time*self.targ_velocity
+		targ_pos = self.start_pos  + (time-self.start_time)*self.targ_velocity
 		return targ_pos
 
 	def target_velocity(self, time):
@@ -41,8 +44,8 @@ class LinearPath(MotionPath):
 		return np.zeros((6,1))
 
 	def is_finished(self, position, t=None):
-		print(np.linalg.norm(self.final_pos[:2] - position[:2]))
-		if(np.linalg.norm(self.final_pos[:2] - position[:2]) < 0.04):
+		#print(np.linalg.norm(self.final_pos[:2] - position[:2]))
+		if(np.linalg.norm(self.final_pos[:2] - position[:2]) < 0.05):
 			return True
 		return False
 
@@ -64,6 +67,9 @@ class CircularPath(MotionPath):
 	def target_velocity(self, time):
 		return np.array([-self.r*np.sin(self.init_theta + self.theta_inc*time)*(self.theta_inc),self.r*np.cos(self.init_theta + self.theta_inc*time)*(self.theta_inc), 0])
 
+	def target_acceleration(self, time):
+		return np.array([-self.r*np.cos(self.init_theta + self.theta_inc*time)*(self.theta_inc)**2,-self.r*np.sin(self.init_theta + self.theta_inc*time)*(self.theta_inc)**2, 0,0,0,0])
+
 	def is_finished(self, position, t):
 		# print(self.end_pos)
 		# print(np.linalg.norm(target_position - np.array(position[:2])), self.r)
@@ -80,9 +86,68 @@ class CircularPath(MotionPath):
 # # the class was to create several different paths and pass those into the 
 # # MultiplePaths object, which would determine when to go onto the next path.
 
-# class MultiplePaths(MotionPath):
-#   def __init__(self, paths):
-#         return
+class MultiplePaths(MotionPath):
+	def __init__(self, start_pos, end_points):
+		self.count = 0
+		self.end_points = end_points
+		self.current_start = start_pos
+		self.current_path = LinearPath(self.end_points[self.count], self.current_start)
 
-#   def get_current_path(self, time):
-#         return
+	def target_position(self, time):
+		return self.current_path.target_position(time)
+
+	def target_velocity(self, time):
+		return self.current_path.target_velocity(time)
+
+	def target_acceleration(self, time):
+		return self.current_path.target_acceleration(time)
+
+	def is_finished(self, position, t=None):
+		print(self.count)
+		if self.count == 5:
+			return True
+		else:
+			if self.current_path.is_finished(position):
+				self.count += 1
+				self.current_start = position
+				self.current_path = LinearPath(self.end_points[self.count % 4], self.current_start, t)
+				time.sleep(1)
+			return False
+
+
+class VisualServoPaths(MotionPath):
+	def __init__(self, start_pos, end_point):
+		self.current_start = start_pos
+		self.current_path = LinearPath(end_point, self.current_start)
+
+		self.tag_pos = end_point
+		# rospy.init_node('tag_listen', anonymous=True)
+		rospy.Subscriber('tag_talk', Point, self.assign_tag_pos)
+		# rospy.spin()
+
+	def assign_tag_pos(self, data):
+		#print("here")
+		if data is not None:
+			p_arr = [data.x, data.y, data.z]
+			self.tag_pos = np.array(p_arr)
+
+	def target_position(self, time):
+		return self.current_path.target_position(time)
+
+	def target_velocity(self, time):
+		return self.current_path.target_velocity(time)
+
+	def target_acceleration(self, time):
+		return self.current_path.target_acceleration(time)
+
+	def is_finished(self, position, t):
+		# print(np.linalg.norm(self.current_path.final_pos - self.tag_pos))
+		# print(type(self.current_path.final_pos))
+		# print(self.current_path.final_pos)
+		# print(self.tag_pos)
+		#print(type(self.current_path.final_pos), type(self.tag_pos))
+		if self.tag_pos is not None and np.linalg.norm(self.current_path.final_pos - self.tag_pos) > 0.1:
+			print("changing path")
+			self.current_start = position
+			self.current_path = LinearPath(self.tag_pos, self.current_start, t)
+		return False

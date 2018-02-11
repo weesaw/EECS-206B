@@ -1,20 +1,25 @@
 import rospy
 import numpy as np
 from utils import *
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point
 import time
+from baxter_core_msgs.msg import SEAJointState
+
 """
 Starter script for lab1. 
 Author: Chris Correa
 """
 class Controller:
-	joint_order = ["left_s0", "left_s1", "left_e0", "left_e1", "left_w0", "left_w1", "left_w2"]
+	# joint_order = ["left_s0", "left_s1", "left_e0", "left_e1", "left_w0", "left_w1", "left_w2"]
+	joint_order = ["right_s0", "right_s1", "right_e0", "right_e1", "right_w0", "right_w1", "right_w2"]
+	ar_tag = None
+
 
 	def step_path(self, path, t):
 		raise NotImplementedError
 
 	def finished(self, path, t):
-		raise NotImplementedError
+		raise NotImplementedError	
 
 	def execute_path(self, path, finished, timeout=None, log=False):
 		start_t = rospy.Time.now()
@@ -23,16 +28,22 @@ class Controller:
 		actual_velocities = list()
 		target_positions = list()
 		target_velocities = list()
-
-		actual_thetas = list()
-		target_thetas = list()
-		actual_theta_dots = list()
-		target_theta_dots = list()
+		if isinstance(self, PDJointVelocityController) or isinstance(self, PDJointTorqueController):
+			actual_thetas = list()
+			target_thetas = list()
+			actual_theta_dots = list()
+			target_theta_dots = list()
 		r = rospy.Rate(200)
+
+
+		# rospy.init_node('artag_listner', anonymous=True)
+		# rospy.Subscriber('artag_talk', Point, lambda x: ar_tag = x.data)
+		# rospy.spin()
+
 		while True:
 			t = (rospy.Time.now() - start_t).to_sec()
 			if timeout is not None and t >= timeout:
-				return False
+				break
 			success = self.step_path(path, t)
 			if log:
 				times.append(t)
@@ -40,19 +51,30 @@ class Controller:
 				actual_positions.append([full_pos[0], full_pos[1], full_pos[2]])
 				full_vel = self.limb.endpoint_velocity()["linear"]
 				actual_velocities.append([full_vel[0], full_vel[1], full_vel[2]])
-				# actual_positions.append(self.limb.joint_angles)
-				# actual_velocities.append(self.limb.joint_velocities)
+
 				target_positions.append(path.target_position(t).tolist())
 				target_velocities.append(path.target_velocity(t).tolist())
 				joint_thetas_dict = self.limb.joint_angles()
 				joint_velocities_dict = self.limb.joint_velocities()
-				actual_thetas.append([joint_thetas_dict[k] for k in Controller.joint_order])
-				actual_theta_dots.append([joint_velocities_dict[k] for k in Controller.joint_order])
-				target_thetas.append(self.target_thetas.tolist())
-				target_theta_dots.append(self.target_theta_dots.tolist())
+
+				if isinstance(self, PDJointVelocityController) or isinstance(self, PDJointTorqueController):
+					actual_thetas.append([joint_thetas_dict[k] for k in Controller.joint_order])
+					actual_theta_dots.append([joint_velocities_dict[k] for k in Controller.joint_order])
+					target_thetas.append(self.target_thetas.tolist())
+					target_theta_dots.append(self.target_theta_dots.tolist())
 			# print(path)
 			check_pos = self.limb.endpoint_pose()["position"]
+
+			#ag_pos = lookup_tag()
+			# if finished is not None and finished(check_pos, t) or success == -1:
+			# 	if success == -1:
+			# 		print("Inverse kinematics not working!")
+			# 	break
+			# r.sleep()
+
 			if finished is not None and finished(check_pos, t) or success == -1:
+				if success == -1:
+					print("Inverse kinematics not working!")
 				break
 			r.sleep()
 
@@ -94,24 +116,24 @@ class Controller:
 			plt.plot(times, actual_positions[:,2], label="Z Position actual")
 			plt.legend()
 			
+			if isinstance(self, PDJointVelocityController) or isinstance(self, PDJointTorqueController):
+				actual_thetas = np.reshape(actual_thetas, (len(times), 7))
+				target_thetas = np.reshape(target_thetas, (len(times), 7))
+				actual_theta_dots = np.reshape(actual_theta_dots, (len(times), 7))
+				target_theta_dots = np.reshape(target_theta_dots, (len(times), 7))
 
-			actual_thetas = np.reshape(actual_thetas, (len(times), 7))
-			target_thetas = np.reshape(target_thetas, (len(times), 7))
-			actual_theta_dots = np.reshape(actual_theta_dots, (len(times), 7))
-			target_theta_dots = np.reshape(target_theta_dots, (len(times), 7))
+				plt.figure()
+				for i in range(1,8):
+					plt.subplot(7,2,i)
+					plt.plot(times, actual_thetas[:,i-1], label="J{} actual theta".format(i))
+					plt.plot(times, target_thetas[:,i-1], label="J{} target theta".format(i))
+					plt.legend()
 
-			plt.figure()
-			for i in range(1,8):
-				plt.subplot(7,2,i)
-				plt.plot(times, actual_thetas[:,i-1], label="J{} actual theta".format(i))
-				plt.plot(times, target_thetas[:,i-1], label="J{} target theta".format(i))
-				plt.legend()
-
-			for i in range(8,15):
-				plt.subplot(7,2,i)
-				plt.plot(times, actual_theta_dots[:,i-8], label="J{} actual theta dot".format(i-7))
-				plt.plot(times, target_theta_dots[:,i-8], label="J{} target theta dot".format(i-7))
-				plt.legend()
+				for i in range(8,15):
+					plt.subplot(7,2,i)
+					plt.plot(times, actual_theta_dots[:,i-8], label="J{} actual theta dot".format(i-7))
+					plt.plot(times, target_theta_dots[:,i-8], label="J{} target theta dot".format(i-7))
+					plt.legend()
 
 
 			plt.show()
@@ -188,7 +210,7 @@ class PDWorkspaceVelocityController(Controller):
 		new_vel = np.append(new_vel, np.zeros((3,1)))
 		joint_vels = np.dot(self.kin.jacobian_pseudo_inverse(), new_vel)
 
-		print(joint_vels)
+		# print(joint_vels)
 
 		dict_ = {}
 		keys = self.limb.joint_names()
@@ -240,20 +262,27 @@ class PDJointVelocityController(Controller):
 
 		self.limb.set_joint_velocities(dict_)
 
+
+
 class PDJointTorqueController(Controller):
 	def __init__(self, limb, kin, Kp, Kv):
 		self.limb = limb
 		self.kin = kin
 		self.Kp = Kp
 		self.Kv = Kv
+
+		self.target_theta_dots = None
+		self.target_thetas = None
+
+
+		# print(self.init_torque)
+		# self.new_torque = None
 		self.prev_J_inv = self.kin.jacobian_pseudo_inverse()
 		self.prev_time = rospy.Time.now().to_sec()
 
+
 	def step_path(self, path, t):
 		self.target_theta_dots = np.dot(self.kin.jacobian_pseudo_inverse(), np.append(path.target_velocity(t), np.zeros((3,1))))
-		dt = rospy.Time.now().to_sec() - self.prev_time
-		self.prev_time = rospy.Time.now().to_sec()
-
 
 		dict_pos = self.limb.joint_angles()
 		current_joint_pos = np.array([dict_pos[k] for k in Controller.joint_order])
@@ -271,15 +300,24 @@ class PDJointTorqueController(Controller):
 		workspace_error_dot = self.limb.endpoint_velocity()["linear"] - path.target_velocity(t)
 		joint_error_dot = np.dot(self.kin.jacobian_pseudo_inverse(), np.append(workspace_error_dot,np.zeros((3,1))))
 
-		target_theta_ddot = np.dot(self.kin.jacobian_pseudo_inverse(), path.target_acceleration(t)) \
-						   +np.dot((self.kin.jacobian_pseudo_inverse() - self.prev_J_inv)/dt, np.append(path.target_velocity(t), np.zeros((3,1))))
+
+		dt = rospy.Time.now().to_sec() - self.prev_time
+		self.prev_time = rospy.Time.now().to_sec()
+
+		# target_theta_ddot = np.dot(self.kin.jacobian_pseudo_inverse(), path.target_acceleration(t)) \
+		# 				   +np.reshape(np.dot((self.kin.jacobian_pseudo_inverse() - self.prev_J_inv)/dt, np.append(path.target_velocity(t), np.zeros((3,1)))), (7,1))
+
+		target_theta_ddot = np.dot(self.kin.jacobian_pseudo_inverse(), path.target_acceleration(t)) + np.dot((self.kin.jacobian_pseudo_inverse() - self.prev_J_inv)/dt, np.append(path.target_velocity(t), np.zeros((3,1))))
 
 		self.prev_J_inv = self.kin.jacobian_pseudo_inverse()
 
+
+		# M_term = np.dot(self.kin.inertia(), np.reshape(target_theta_ddot, (7,1)))
 		M_term = np.dot(self.kin.inertia(), target_theta_ddot)
 
-		new_torque = M_term - np.multiply(self.Kp, joint_error) - np.multiply(self.Kv, joint_error_dot)
 
+		new_torque = M_term + np.multiply(self.Kp, joint_error) + np.multiply(self.Kv, joint_error_dot)
+		# print(new_torque)
 		dict_ = {}
 		for i in range(len(Controller.joint_order)):
 			dict_[Controller.joint_order[i]] = new_torque.item(i)
