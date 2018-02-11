@@ -22,7 +22,7 @@ from baxter_pykdl import baxter_kinematics
 import signal
 # from controllers import PDJointPositionController, PDJointVelocityController, PDJointTorqueController
 from controllers2 import PDWorkspaceVelocityController, PDJointVelocityController, PDJointTorqueController
-from path2 import LinearPath, CircularPath
+from path2 import LinearPath, CircularPath, MultiplePaths, VisualServoPaths
 
 def lookup_tag(tag_number):
     listener = tf.TransformListener()
@@ -45,8 +45,28 @@ def lookup_tag(tag_number):
             break
         except:
             continue
-
+    print(type(tag_pos))
+    print(tag_number, "found:", tag_pos)
     return tag_pos
+
+
+def lookup_tag2(tag_number):
+    listener = tf.TransformListener()
+    from_frame = 'base'
+    to_frame = 'ar_marker_{}'.format(tag_number)
+
+    tag_pos = None
+    for _ in range(100):
+        try:
+            t = listener.getLatestCommonTime(from_frame, to_frame)
+            tag_pos, _ = listener.lookupTransform(from_frame, to_frame, t)
+            break
+        except:
+            continue
+    #print(tag_number, "found:", tag_pos)
+    return tag_pos
+
+
 
 if __name__ == "__main__":
     def sigint_handler(signal, frame):
@@ -59,11 +79,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-ar_marker', '-ar', type=float, default=1)
     parser.add_argument('-controller', '-c', type=str, default='position') # or velocity or torque
-    parser.add_argument('-arm', '-a', type=str, default='left') # or right
+    # parser.add_argument('-arm', '-a', type=str, default='left') # or right
+    parser.add_argument('-arm', '-a', type=str, default='right')
     args = parser.parse_args()
 
     limb = baxter_interface.Limb(args.arm)
-    kin = baxter_kinematics('left')
+    # kin = baxter_kinematics('left')
+    kin = baxter_kinematics('right')
+
+    raw_input('\nPlace the AR tag and press <Enter> to start')
 
     # if args.controller == 'position':
     #     # YOUR CODE HERE
@@ -88,13 +112,40 @@ if __name__ == "__main__":
     # Kv = np.array([-1.2, -.5, -.5, -.5, -.5, -.5, -.8])
     # controller = PDJointVelocityController(limb, kin, Kp, Kv)
 
-    # ### CIRCULAR PATH JOINTSPACE CONTROL
+    ### CIRCULAR PATH JOINTSPACE CONTROL
     # Kp = np.array([-.8, -.5, -1, -.5, -1, -.5, -1])
     # Kv = np.array([-.8, -.5, -.5, -.5, -.5, -.5, -.8])
     # controller = PDJointVelocityController(limb, kin, Kp, Kv)
 
-    Kp = np.array([-.5, -.5, -.5, -.5, -.5, -.5, -.5])
-    Kv = np.array([-.5, -.5, -.5, -.5, -.5, -.5, -.5])
+    ### MULTIPLE PATHS WORKSPACE CONTROL
+    # Kp = -.1
+    # Kv = -.4
+    # # # 2, 0, 1, 
+    # controller = PDWorkspaceVelocityController(limb, kin, Kp, Kv)
+    
+
+    # ### MULTIPLE PATH JOINTSPACE CONTROL
+    # Kp = np.array([-1, -10, -.5, -4, -.5, -.4, -.5])
+    # Kv = np.array([-.5, -10, -.5, -1, -.5, -.3, -.5])
+    # controller = PDJointVelocityController(limb, kin, Kp, Kv)
+
+    # torques
+    # Kp = np.array([-1, -10, -.5, -4, -.5, -.4, -.5])
+    # Kv = np.array([-.5, -10, -.5, -1, -.5, -.3, -.5])
+
+    # Kp = np.array([-.2, -10, 0, -1, 0 ,-.1, 0])
+    # Kv = np.array([-.2, -14, 0, -1, 0 ,-.1, 0])
+
+    Kp = np.zeros((7,1))
+    Kv = np.zeros((7,1))
+
+    tag_pos = np.array(lookup_tag(8))
+    # tag_pos = [np.array(lookup_tag(3)), np.array(lookup_tag(1)), np.array(lookup_tag(2)), np.array(lookup_tag(14))]
+    raw_input('AR tags found! Press <Enter> to continue')
+
+    # ### LINEAR PATH JOINT TORQUE CONTROL
+    # Kp = np.array([.1, 8.5, .01, .1, -.2, .05, -.1])
+    # Kv = np.array([.1, 9.5, .01, .1, -.1, .1, -.1])
 
     # if args.controller == 'torque':
     #     # YOUR CODE HERE
@@ -102,19 +153,25 @@ if __name__ == "__main__":
     #     Kv = 
     #     controller = PDJointTorqueController(limb, kin, Kp, Kv)
     
-    raw_input('\nPlace the AR tag and press <Enter> to start')
+    
     # YOUR CODE HERE
     # IMPORTANT: you may find useful functions in utils.py
 
-    tag_pos = np.array(lookup_tag(4));
+    
 
-    # tag_pos = np.array([.6, .7, -.35])
+    # tag_pos = np.array(lookup_tag(4))
 
-    print("Target position: ", tag_pos)
-    raw_input('AR tag found! Press <Enter> to continue')
+    # print("Target position: ", tag_pos)
+    # raw_input('AR tag found! Press <Enter> to continue')
 
 
     path1 = LinearPath(tag_pos, limb.endpoint_pose()["position"])
     # path1 = CircularPath(tag_pos, limb.endpoint_pose()["position"])
+    # path1 = MultiplePaths(limb.endpoint_pose()["position"], tag_pos)
     controller = PDJointTorqueController(limb, kin, Kp, Kv)
-    controller.execute_path(path1, path1.is_finished, log = True)
+
+    # path1 = VisualServoPaths(limb.endpoint_pose()["position"], tag_pos, limb)
+
+    # lookup = lambda : lookup_tag(1)
+    # controller.execute_path(path1, path1.is_finished, log = True, tag_fn = lookup)
+    # controller.execute_path(path1, path1.is_finished, log = True)
