@@ -49,12 +49,21 @@ def lookup_tag(tag_number):
     print(tag_number, "found:", tag_pos)
     return tag_pos
 
+<<<<<<< HEAD
 
 def lookup_tag2(tag_number):
     listener = tf.TransformListener()
     from_frame = 'base'
     to_frame = 'ar_marker_{}'.format(tag_number)
 
+=======
+
+def lookup_tag2(tag_number):
+    listener = tf.TransformListener()
+    from_frame = 'base'
+    to_frame = 'ar_marker_{}'.format(tag_number)
+
+>>>>>>> bb09561cf45fbaa5f5a6efa2508fa3e8f13fd13a
     tag_pos = None
     for _ in range(100):
         try:
@@ -129,6 +138,7 @@ if __name__ == "__main__":
     # Kv = np.array([-.5, -10, -.5, -1, -.5, -.3, -.5])
     # controller = PDJointVelocityController(limb, kin, Kp, Kv)
 
+<<<<<<< HEAD
     # ### LINEAR PATH JOINT TORQUE CONTROL
     # Kp = np.array([-30,-10,-15,-5,0,0,-2])
     # Kv = np.array([-28,0,-8,0,0,0,0])
@@ -146,6 +156,20 @@ if __name__ == "__main__":
 
     tag_pos = np.array(lookup_tag(8))
     # tag_pos = [np.array(lookup_tag(1)), np.array(lookup_tag(2)), np.array(lookup_tag(3)), np.array(lookup_tag(8))]
+=======
+    # torques
+    # Kp = np.array([-1, -10, -.5, -4, -.5, -.4, -.5])
+    # Kv = np.array([-.5, -10, -.5, -1, -.5, -.3, -.5])
+
+    # Kp = np.array([-.2, -10, 0, -1, 0 ,-.1, 0])
+    # Kv = np.array([-.2, -14, 0, -1, 0 ,-.1, 0])
+
+    Kp = np.zeros((7,1))
+    Kv = np.zeros((7,1))
+
+    tag_pos = np.array(lookup_tag(8))
+    # tag_pos = [np.array(lookup_tag(3)), np.array(lookup_tag(1)), np.array(lookup_tag(2)), np.array(lookup_tag(14))]
+>>>>>>> bb09561cf45fbaa5f5a6efa2508fa3e8f13fd13a
     raw_input('AR tags found! Press <Enter> to continue')
 
     # ### LINEAR PATH JOINT TORQUE CONTROL
@@ -173,6 +197,7 @@ if __name__ == "__main__":
     # path1 = LinearPath(tag_pos, limb.endpoint_pose()["position"])
     # path1 = CircularPath(tag_pos, limb.endpoint_pose()["position"])
     # path1 = MultiplePaths(limb.endpoint_pose()["position"], tag_pos)
+<<<<<<< HEAD
     #controller = PDJointTorqueController(limb, kin, Kp, Kv)
 
     path1 = VisualServoPaths(limb.endpoint_pose()["position"], tag_pos)
@@ -180,3 +205,12 @@ if __name__ == "__main__":
     # lookup = lambda : lookup_tag(1)
     # controller.execute_path(path1, path1.is_finished, log = True, tag_fn = lookup)
     controller.execute_path(path1, path1.is_finished, timeout = 20, log = True)
+=======
+    controller = PDJointTorqueController(limb, kin, Kp, Kv)
+
+    # path1 = VisualServoPaths(limb.endpoint_pose()["position"], tag_pos, limb)
+
+    # lookup = lambda : lookup_tag(1)
+    # controller.execute_path(path1, path1.is_finished, log = True, tag_fn = lookup)
+    # controller.execute_path(path1, path1.is_finished, log = True)
+>>>>>>> bb09561cf45fbaa5f5a6efa2508fa3e8f13fd13a
