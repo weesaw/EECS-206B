@@ -3,6 +3,7 @@ from math import sin, cos, atan2
 from geometry_msgs.msg._Point import Point
 import tf.transformations as tfs
 from geometry_msgs.msg import Pose, PoseStamped
+import math
 
 def length(vec):
     return math.sqrt(vec.dot(vec))
@@ -67,9 +68,10 @@ def rigid(twist):
         ])
 
 def look_at_general(eye, center, up):
-    f = tfs.unit_vector(center - eye)
+    # f = tfs.unit_vector(center - eye)
+    f = tfs.unit_vector(center)
     u = tfs.unit_vector(up)
-    s = tfs.unit_vector(np.cross(f,u))
+    s = tfs.unit_vector(np.cross(u, f))
     u = np.cross(s,f) 
 
     result = np.eye(4)
