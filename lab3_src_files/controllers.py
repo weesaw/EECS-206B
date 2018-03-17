@@ -35,8 +35,46 @@ class Controller():
 
 		x_d,y_d,theta_d = self.path.target_state(s)
 		x,y,theta = current_state
-		v_d, w_d = self.path.target_velocity(s).linear, self.path.target_velocity(s).angular
+		# v_d, w_d = self.path.target_velocity(s).linear, self.path.target_velocity(s).angular
+		v_d, w_d = self.path.target_velocity(s)
+		sign = self.path.going_back
+		# sign = 1.0
 
-		toRet.linear = Vector3(*(np.cos(theta_d - theta)*v_d - self.K1*(x_d-x)).tolist())
-		toRet.angular = Vector3(*(w_d + self.K2*v_d*np.sinc(theta_d - theta)*(y_d-y) - self.K3*(theta_d - theta)).tolist())
+		# if x_d > 0:
+		# 	e = x_d - x
+		# else:
+		# 	e = x - x_d
+		e = x_d - x
+
+		if abs(theta_d) > np.pi/2:
+			e = -e
+
+
+		e_theta = (theta_d - theta)
+		e_theta = (e_theta+np.pi)%(2*np.pi) - np.pi
+
+		# if e_theta > np.pi:
+		# 	e_theta -= 2*np.pi
+
+		# if e_theta < -np.pi:
+		# 	e_theta += 2*np.pi
+
+		# print e_theta
+
+		# toRet.linear = Vector3(*(np.cos(theta_d - theta)*self.target_speed + self.K1*(x_d-x)).tolist())
+		# toRet.angular = Vector3(*(w_d - self.K2*self.target_speed*np.sinc(theta_d + theta)*(y_d-y) - self.K3*(theta_d - theta)).tolist())
+		toRet.linear.x = sign*np.cos(theta_d - theta)*self.target_speed + self.K1*e
+		toRet.angular.z = w_d[2] - sign*self.K2*self.target_speed*np.sinc(e_theta)*(y_d-y) + self.K3*(e_theta)
+
+		# linear = np.cos(theta_d - theta)*v_d - self.K1*(x_d-x)
+		# angular = w_d + self.K2*v_d*np.sinc(theta_d - theta)*(y_d-y) - self.K3*(theta_d - theta)
+
+		# toRet.linear.x = linear[0]
+		# toRet.linear.y = linear[1]
+		# toRet.linear.z = linear[2]
+
+		# toRet.angular.x = angular[0]
+		# toRet.angular.y = angular[1]
+		# toRet.angular.z = angular[2]
+
 		return toRet
