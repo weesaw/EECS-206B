@@ -57,3 +57,9 @@ def rigid(twist):
 			[sin(twist[2]), cos(twist[2]), twist[1]],
 			[0, 0, 1]
 		])
+
+def norm(vec):
+	return sqrt(np.dot(vec, vec))
+
+def unit(vec):
+	return vec/norm(vec)

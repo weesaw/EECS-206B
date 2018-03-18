@@ -9,11 +9,11 @@ import tf.transformations as tfs
 import numpy as np
 
 cmd_vel = rospy.Publisher('cmd_vel_mux/input/navi', Twist, queue_size=10)
-target_speed = .1
+target_speed = .2
 tile = 0.3048
 obstacle = False
-obstacle_center = vec(2.0, -0.0)
-obstacle_radius = tile*sqrt(2) + 0.1
+obstacle_center = vec(4*tile, -tile/2)
+obstacle_radius = tile*sqrt(2)/2
 robot_radius = 0.4
 
 # path = parallel_parking_path
@@ -24,10 +24,11 @@ path = compute_obstacle_avoid_path(7*tile, vec(4*tile, tile), obstacle_radius, t
 # path2 = ArcPath(.2, 2*np.pi, False, target_speed)
 # path3 = LinearPath(-1.0, target_speed)
 # path = ChainPath([path1, path2, path3])
+# path = LinearPath(2.5, target_speed)
 
 # k = [3,1,3]
-# k = [2,.5,5]
-k = [2, 5, 5]
+k = [2,.5,5,0]
+# k = [1, 10, 1.1, 2]
 
 
 
